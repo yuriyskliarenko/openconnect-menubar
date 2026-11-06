@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: make test
+      - run: make release
+        env:
+          VERSION: ${{ github.ref_name }}
+      - run: gh release create "$GITHUB_REF_NAME" dist/*.zip --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

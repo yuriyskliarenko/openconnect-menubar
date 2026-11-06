@@ -11,10 +11,23 @@ simple local page instead of shell scripts.
 
 ## Requirements
 
-- macOS, with Go 1.22+ and the Xcode Command Line Tools to build
+- macOS 13 or later
+- Go 1.22+ and the Xcode Command Line Tools, only to build from source
 - openconnect and vpnc-script from Homebrew (`brew install openconnect`) or MacPorts (`sudo port install openconnect`)
 
 ## Install
+
+Download the latest zip from [Releases](https://github.com/yuriyskliarenko/openconnect-menubar/releases),
+unzip it and move the app to `~/Applications`. It runs on Intel and Apple Silicon.
+
+The app isn't notarized by Apple, so macOS blocks a downloaded copy. Clear the
+quarantine flag once:
+
+```sh
+xattr -dr com.apple.quarantine ~/Applications/"OpenConnect Menubar.app"
+```
+
+Or build it yourself:
 
 ```sh
 make install
@@ -61,6 +74,9 @@ websites out. Connection values that reach a root shell are validated.
 make test
 go run . -serve    # manager page only, prints its URL
 ```
+
+Pushing a `v*` tag runs the release workflow, which tests, builds a universal app
+and publishes the zip. `make release` builds the same zip locally.
 
 `OCM_CONFIG_DIR` overrides the config directory and makes the app print the manager URL.
 

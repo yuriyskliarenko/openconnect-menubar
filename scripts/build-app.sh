@@ -1,13 +1,26 @@
 #!/bin/bash
-# Builds "dist/OpenConnect Menubar.app".
+# Builds "dist/OpenConnect Menubar.app". With UNIVERSAL=1 it builds for Intel
+# and Apple Silicon and also creates the release zip. VERSION overrides the
+# version taken from git.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP="dist/OpenConnect Menubar.app"
-VERSION=$(git describe --tags --always 2>/dev/null || echo 0.1.0)
+VERSION=${VERSION:-$(git describe --tags --always 2>/dev/null || echo 0.1.0)}
+VERSION=${VERSION#v}
+export MACOSX_DEPLOYMENT_TARGET=13.0
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" dist/icon
-go build -o "$APP/Contents/MacOS/openconnect-menubar" .
+BIN="$APP/Contents/MacOS/openconnect-menubar"
+if [ "${UNIVERSAL:-}" = 1 ]; then
+  for arch in amd64 arm64; do
+    CGO_ENABLED=1 GOARCH=$arch go build -trimpath -o "dist/bin-$arch" .
+  done
+  lipo -create -output "$BIN" dist/bin-amd64 dist/bin-arm64
+  rm dist/bin-amd64 dist/bin-arm64
+else
+  go build -trimpath -o "$BIN" .
+fi
 
 ICONSET=dist/icon/AppIcon.iconset
 mkdir -p "$ICONSET"
@@ -29,7 +42,16 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
 </dict></plist>
 PLIST
+codesign --force --deep --sign - "$APP" # ad-hoc: required on Apple Silicon
 echo "Built $APP"
+
+if [ "${UNIVERSAL:-}" = 1 ]; then
+  ZIP="dist/OpenConnect-Menubar-$VERSION.zip"
+  rm -f "$ZIP"
+  ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+  echo "Built $ZIP"
+fi

@@ -1,6 +1,6 @@
 APP := dist/OpenConnect Menubar.app
 
-.PHONY: app install test clean
+.PHONY: app install test release clean
 
 app:
 	./scripts/build-app.sh
@@ -13,6 +13,9 @@ install: app
 test:
 	go vet ./...
 	go test ./...
+
+release:
+	UNIVERSAL=1 ./scripts/build-app.sh
 
 clean:
 	rm -rf dist
