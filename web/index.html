@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenConnect Menubar</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f8; --panel: #fff; --line: #dfe4e9; --text: #17212b; --muted: #64717e;
+  --accent: #0d7c86; --accent-text: #fff; --soft: #e4f2f3; --danger: #c0392b;
+  --ok: #1f9d55; --warn-bg: #fff6e0; --warn-line: #eccb7a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14191e; --panel: #1c2329; --line: #303a43; --text: #e6ebf0; --muted: #93a0ad;
+    --accent: #2bb3bf; --accent-text: #06282b; --soft: #1d3438; --danger: #ef7566;
+    --ok: #46c67e; --warn-bg: #352c15; --warn-line: #6d5a24;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.wrap { max-width: 940px; margin: 0 auto; padding: 28px 20px 48px; }
+h1 { font-size: 20px; margin: 0 0 18px; letter-spacing: -.01em; }
+h2 { font-size: 15px; margin: 0; }
+.banner { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 16px; }
+.banner code { display: block; margin-top: 8px; padding: 8px 10px; background: var(--panel);
+  border-radius: 6px; overflow-x: auto; white-space: pre; font: 12px ui-monospace, Menlo, monospace; }
+.layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.list { padding: 8px; }
+button.conn { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; padding: 9px 10px; border: 0;
+  background: none; color: inherit; font: inherit; text-align: left; border-radius: 8px; cursor: pointer; }
+.conn:hover { background: var(--bg); }
+.conn.sel { background: var(--soft); }
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dot.on { background: var(--ok); }
+.conn span { min-width: 0; overflow: hidden; }
+.conn b, .conn small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn b { font-weight: 550; }
+.conn small { color: var(--muted); font-size: 12px; }
+.empty { color: var(--muted); padding: 12px 10px; }
+.add { width: 100%; margin-top: 6px; }
+form { padding: 18px 20px 20px; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+.full { grid-column: 1 / -1; }
+label.f { display: block; font-size: 12px; color: var(--muted); }
+label.f > span { display: block; margin-bottom: 4px; font-weight: 550; }
+input[type=text], input[type=password], input[type=number], select {
+  width: 100%; height: 34px; padding: 0 10px; font: 14px inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 7px; }
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+label.f > span.row { display: flex; gap: 8px; margin: 0; }
+.row input { flex: 1; min-width: 0; }
+.hint { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); font-weight: 400; }
+details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font-weight: 550; margin-bottom: 12px; }
+button { height: 34px; padding: 0 14px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); font: 13px inherit; font-weight: 550; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.danger { color: var(--danger); }
+button:disabled { opacity: .5; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; align-items: center; }
+.spacer { flex: 1; }
+.msg { min-height: 20px; margin-top: 12px; font-size: 13px; color: var(--ok); }
+.msg.err { color: var(--danger); }
+.link { height: auto; padding: 0; border: 0; background: none; color: var(--accent); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>OpenConnect Menubar</h1>
+  <div id="banner" class="banner" hidden></div>
+  <div class="layout">
+    <div class="panel list">
+      <div id="list"></div>
+      <button class="add" id="add" type="button">Add connection</button>
+    </div>
+    <form class="panel" id="form" autocomplete="off">
+      <div class="head">
+        <h2 id="title">New connection</h2>
+        <button type="button" id="toggle" hidden></button>
+      </div>
+      <div class="grid">
+        <label class="f"><span>Name</span><input type="text" id="name" required placeholder="Work VPN"></label>
+        <label class="f"><span>Protocol</span><select id="protocol"></select></label>
+        <label class="f full"><span>Server</span><input type="text" id="server" required placeholder="vpn.example.com"></label>
+        <label class="f"><span>Username</span><input type="text" id="username" autocapitalize="off" spellcheck="false"></label>
+        <label class="f"><span>Password</span><input type="password" id="loginPassword" autocomplete="new-password">
+          <span class="hint" id="loginHint"></span></label>
+        <label class="check full"><input type="checkbox" id="needsPassword" checked>The server asks for a password</label>
+        <label class="f full"><span>Client certificate</span>
+          <span class="row"><input type="text" id="certificate" spellcheck="false" placeholder="/path/to/client.p12">
+          <button type="button" id="pick">Choose…</button></span></label>
+        <label class="check full"><input type="checkbox" id="certEncrypted">The certificate has a passphrase</label>
+        <label class="f full" id="certPassRow" hidden><span>Certificate passphrase</span>
+          <input type="password" id="certPassword" autocomplete="new-password"><span class="hint" id="certHint"></span></label>
+      </div>
+      <details id="advanced">
+        <summary>Advanced</summary>
+        <div class="grid">
+          <label class="f"><span>Auth group</span><input type="text" id="authGroup"></label>
+          <label class="f"><span>DNS search domain</span><input type="text" id="searchDomain" spellcheck="false" placeholder="corp.example.com"></label>
+          <label class="f full"><span>Server certificate pin</span><input type="text" id="serverCert" spellcheck="false" placeholder="pin-sha256:…">
+            <span class="hint">Needed when the server uses a certificate that isn't publicly trusted.</span></label>
+          <label class="f"><span>Base MTU</span><input type="number" id="baseMtu" min="576" max="9000"></label>
+          <label class="check" style="align-self:end;height:34px"><input type="checkbox" id="noDtls">Disable DTLS</label>
+          <label class="f full"><span>Extra openconnect arguments</span><input type="text" id="extraArgs" spellcheck="false">
+            <span class="hint">Run as root. Separated by spaces, without quoting.</span></label>
+        </div>
+      </details>
+      <div class="actions">
+        <button class="primary" type="submit">Save</button>
+        <span class="spacer"></span>
+        <button class="danger" type="button" id="delete" hidden>Delete</button>
+      </div>
+      <div class="msg" id="msg" role="status"></div>
+    </form>
+  </div>
+</div>
+<script>
+const TOKEN = "__TOKEN__";
+const $ = id => document.getElementById(id);
+const textFields = ["name", "server", "username", "certificate", "authGroup", "searchDomain", "serverCert", "extraArgs"];
+const boxes = ["needsPassword", "certEncrypted", "noDtls"];
+let state = null, selected = null, clearLogin = false, clearCert = false, confirmDelete = false;
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "X-Token": TOKEN, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Request failed (" + res.status + ")");
+  }
+  return res.status === 200 ? res.json() : null;
+}
+
+function say(text, isError) {
+  $("msg").textContent = text;
+  $("msg").classList.toggle("err", !!isError);
+}
+
+function renderBanner() {
+  const s = state.system, b = $("banner");
+  b.hidden = !!(s.openconnect && s.sudoOk);
+  if (b.hidden) return;
+  b.textContent = "";
+  if (!s.openconnect) {
+    b.textContent = "openconnect was not found. Install it with Homebrew or MacPorts.";
+    return;
+  }
+  b.append("openconnect needs root. Allow it without a password by running this in a terminal:");
+  const code = document.createElement("code");
+  code.textContent = `echo '${s.sudoersLine}' | sudo tee /etc/sudoers.d/openconnect-menubar && sudo chmod 440 /etc/sudoers.d/openconnect-menubar && sudo visudo -c`;
+  b.append(code);
+}
+
+function renderList() {
+  const list = $("list");
+  list.textContent = "";
+  if (!state.connections.length) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = "No connections yet.";
+    list.append(e);
+  }
+  for (const c of state.connections) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "conn" + (selected === c.id ? " sel" : "");
+    const dot = document.createElement("i");
+    dot.className = "dot" + (state.activeId === c.id ? " on" : "");
+    const text = document.createElement("span");
+    const b = document.createElement("b"), small = document.createElement("small");
+    b.textContent = c.name;
+    small.textContent = c.server;
+    text.append(b, small);
+    btn.append(dot, text);
+    btn.onclick = () => select(c.id);
+    list.append(btn);
+  }
+}
+
+function renderToggle() {
+  const t = $("toggle");
+  t.hidden = !selected;
+  if (!selected) return;
+  const on = state.activeId === selected;
+  t.textContent = on ? "Disconnect" : "Connect";
+  t.className = on ? "" : "primary";
+  $("delete").disabled = on;
+}
+
+function renderHints(c) {
+  $("loginHint").textContent = c && c.hasLogin ? "" : "Leave empty to be asked when connecting.";
+  $("certHint").textContent = c && c.hasCert ? "" : "Leave empty to be asked when connecting.";
+  for (const [id, has, clear] of [["loginHint", c && c.hasLogin, () => clearLogin = true], ["certHint", c && c.hasCert, () => clearCert = true]]) {
+    if (!has) continue;
+    const hint = $(id);
+    hint.textContent = "Saved in Keychain. ";
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "link"; b.textContent = "Remove";
+    b.onclick = () => { clear(); hint.textContent = "Will be removed when you save."; };
+    hint.append(b);
+  }
+  $("certPassRow").hidden = !$("certEncrypted").checked;
+}
+
+function fill(c) {
+  clearLogin = clearCert = confirmDelete = false;
+  for (const f of textFields) $(f).value = (c && c[f]) || "";
+  $("protocol").value = (c && c.protocol) || "anyconnect";
+  $("needsPassword").checked = c ? c.needsPassword : true;
+  $("certEncrypted").checked = !!(c && c.certEncrypted);
+  $("noDtls").checked = !!(c && c.noDtls);
+  $("baseMtu").value = (c && c.baseMtu) || "";
+  $("loginPassword").value = $("certPassword").value = "";
+  $("title").textContent = c ? c.name : "New connection";
+  $("delete").hidden = !c;
+  $("delete").textContent = "Delete";
+  $("advanced").open = !!(c && (c.authGroup || c.searchDomain || c.serverCert || c.baseMtu || c.noDtls || c.extraArgs));
+  renderHints(c);
+  say("");
+}
+
+function select(id) {
+  selected = id;
+  fill(state.connections.find(c => c.id === id));
+  renderList();
+  renderToggle();
+}
+
+async function load() {
+  state = await api("GET", "/api/state");
+  if ($("protocol").options.length === 0) {
+    for (const p of state.protocols) $("protocol").add(new Option(p, p));
+  }
+  renderBanner();
+  renderList();
+  renderToggle();
+}
+
+$("add").onclick = () => { selected = null; fill(null); renderList(); renderToggle(); $("name").focus(); };
+$("certEncrypted").onchange = () => { $("certPassRow").hidden = !$("certEncrypted").checked; };
+
+$("pick").onclick = async () => {
+  try {
+    const { path } = await api("POST", "/api/pick-certificate");
+    if (path) $("certificate").value = path;
+  } catch (e) { say(e.message, true); }
+};
+
+$("form").onsubmit = async e => {
+  e.preventDefault();
+  const connection = { id: selected || "", protocol: $("protocol").value, baseMtu: Number($("baseMtu").value) || 0 };
+  for (const f of textFields) connection[f] = $(f).value;
+  for (const f of boxes) connection[f] = $(f).checked;
+  try {
+    const saved = await api("POST", "/api/connections", {
+      connection, clearLogin, clearCert,
+      loginPassword: $("loginPassword").value,
+      certPassword: $("certPassword").value,
+    });
+    await load();
+    select(saved.id);
+    say("Saved.");
+  } catch (err) { say(err.message, true); }
+};
+
+$("delete").onclick = async () => {
+  if (!confirmDelete) {
+    confirmDelete = true;
+    $("delete").textContent = "Click again to delete";
+    return;
+  }
+  try {
+    await api("DELETE", "/api/connections/" + selected);
+    selected = null;
+    await load();
+    fill(null);
+    renderToggle();
+    say("Deleted.");
+  } catch (err) { say(err.message, true); }
+};
+
+$("toggle").onclick = async () => {
+  try {
+    if (state.activeId === selected) await api("POST", "/api/disconnect");
+    else await api("POST", "/api/connect/" + selected);
+    say("Working… the menu bar shows the result.");
+  } catch (err) { say(err.message, true); }
+};
+
+load().then(() => fill(null)).catch(e => say(e.message, true));
+setInterval(() => load().catch(() => {}), 3000);
+</script>
+</body>
+</html>
